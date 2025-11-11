@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健身运动计时器</title>
+    <style>
+        /* 定义配色方案 */
+        :root {
+            --color-cream: #fef7ec; /* 奶白 */
+            --color-beige: #e6d2c3; /* 浅咖/米 */
+            --color-brown: #8b7355; /* 棕咖 */
+            --color-dark: #5a4a3a; /* 深灰咖 */
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--color-cream);
+            color: var(--color-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(139, 115, 85, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid var(--color-beige);
+        }
+
+        h1 {
+            color: var(--color-dark);
+            margin-bottom: 2rem;
+            font-weight: 400;
+        }
+
+        .settings {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .setting-group {
+            text-align: center;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--color-brown);
+        }
+
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--color-beige);
+            border-radius: 8px;
+            background-color: white;
+            color: var(--color-dark);
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .display {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border-radius: 12px;
+            transition: background-color 0.3s ease;
+        }
+
+        /* 运动状态样式 */
+        .status-work {
+            background-color: rgba(230, 210, 195, 0.3); /* 浅咖色背景 */
+            border: 2px solid var(--color-brown);
+        }
+
+        /* 间歇状态样式 */
+        .status-rest {
+            background-color: rgba(139, 115, 85, 0.1); /* 更浅的咖色背景 */
+            border: 2px solid var(--color-beige);
+        }
+
+        #currentPhase {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 300;
+        }
+
+        #timer {
+            font-size: 4rem;
+            font-weight: 200;
+            letter-spacing: 2px;
+            margin: 0.5rem 0;
+            font-family: 'Courier New', monospace; /* 等宽字体，倒计时显示更整齐 */
+        }
+
+        #cycleInfo {
+            font-size: 1rem;
+            color: var(--color-brown);
+            margin-top: 0.5rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        #startPauseBtn {
+            background-color: var(--color-brown);
+            color: white;
+        }
+
+        #startPauseBtn:hover {
+            background-color: var(--color-dark);
+        }
+
+        #stopBtn {
+            background-color: var(--color-beige);
+            color: var(--color-dark);
+        }
+
+        #stopBtn:hover {
+            background-color: #d4c1b0;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        /* 完成提示的样式 */
+        .finished {
+            background-color: rgba(139, 115, 85, 0.15) !important;
+            border-color: var(--color-brown) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏃 运动计时器</h1>
+
+        <div class="settings">
+            <div class="setting-group">
+                <label for="workTime">运动 (分钟)</label>
+                <select id="workTime">
+                    <!-- 选项将通过JavaScript动态生成 -->
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="restTime">间歇 (秒)</label>
+                <select id="restTime">
+                    <!-- 选项将通过JavaScript动态生成 -->
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="cycles">循环次数</label>
+                <select id="cycles">
+                    <!-- 选项将通过JavaScript动态生成 -->
+                </select>
+            </div>
+        </div>
+
+        <div class="display" id="displayPanel">
+            <div id="currentPhase">准备开始</div>
+            <div id="timer">--:--</div>
+            <div id="cycleInfo">设置参数后点击开始</div>
+        </div>
+
+        <div class="controls">
+            <button id="startPauseBtn">开始</button>
+            <button id="stopBtn" disabled>停止</button>
+        </div>
+    </div>
+
+    <!-- 用于播放滴答声的音频元素 -->
+    <audio id="tickSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-metronome-600.mp3" type="audio/mp3">
+        <!-- 备选音源，如果上面的链接失效可以使用这个 -->
+        <!-- <source src="https://soundbible.com/mp3/Clock-Ticking_Time-Bomb-Mike_Koenig-9072.mp3" type="audio/mp3"> -->
+    </audio>
+
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const workTimeSelect = document.getElementById('workTime');
+            const restTimeSelect = document.getElementById('restTime');
+            const cyclesSelect = document.getElementById('cycles');
+            const startPauseBtn = document.getElementById('startPauseBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const displayPanel = document.getElementById('displayPanel');
+            const currentPhaseEl = document.getElementById('currentPhase');
+            const timerEl = document.getElementById('timer');
+            const cycleInfoEl = document.getElementById('cycleInfo');
+            const tickSound = document.getElementById('tickSound');
+
+            // 动态生成选项
+            function populateSelect(selectElement, min, max, unit = '') {
+                for (let i = min; i <= max; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i + unit;
+                    selectElement.appendChild(option);
+                }
+            }
+
+            populateSelect(workTimeSelect, 1, 10, ' 分钟');
+            populateSelect(restTimeSelect, 1, 60, ' 秒');
+            populateSelect(cyclesSelect, 1, 10, ' 次');
+
+            // 设置默认值（示例：运动1分钟，间歇10秒，循环3次）
+            workTimeSelect.value = 1;
+            restTimeSelect.value = 10;
+            cyclesSelect.value = 3;
+
+            // 计时器状态变量
+            let timer = null;
+            let isRunning = false;
+            let isWorkPhase = true; // true为运动阶段，false为间歇阶段
+            let currentCycle = 1;
+            let timeLeft = 0; // 当前阶段剩余秒数
+
+            // 初始化显示
+            updateDisplay();
+
+            // 开始/暂停按钮点击事件
+            startPauseBtn.addEventListener('click', function() {
+                if (!isRunning) {
+                    // 首次开始或暂停后继续
+                    if (timeLeft === 0) {
+                        // 首次开始，初始化时间
+                        startTimer();
+                    } else {
+                        // 暂停后继续
+                        resumeTimer();
+                    }
+                    startPauseBtn.textContent = '暂停';
+                    stopBtn.disabled = false;
+                } else {
+                    // 暂停
+                    pauseTimer();
+                    startPauseBtn.textContent = '继续';
+                }
+            });
+
+            // 停止按钮点击事件
+            stopBtn.addEventListener('click', function() {
+                stopTimer();
+                startPauseBtn.textContent = '开始';
+                stopBtn.disabled = true;
+            });
+
+            // 开始计时器
+            function startTimer() {
+                isRunning = true;
+                currentCycle = 1;
+                isWorkPhase = true;
+                // 将分钟转换为秒
+                timeLeft = parseInt(workTimeSelect.value) * 60;
+                updateDisplay();
+                runTimer();
+            }
+
+            // 运行计时器（核心逻辑）
+            function runTimer() {
+                clearInterval(timer); // 清除之前的计时器
+                timer = setInterval(function() {
+                    timeLeft--;
+
+                    // 播放滴答声（仅在最后10秒或任何一秒，可根据喜好调整）
+                    // if (timeLeft < 10 || true) { // 如果希望每秒都响，用这个
+                    if (timeLeft <= 10 || timeLeft % 5 === 0) { // 最后10秒及每5秒响一次，避免太吵
+                        // 克隆并播放声音，以实现快速连续播放
+                        const tickClone = tickSound.cloneNode();
+                        tickClone.volume = 0.3; // 设置音量，避免太大
+                        tickClone.play().catch(e => console.log("音频播放被阻止（需要用户交互后自动播放）:", e));
+                    }
+
+                    updateDisplay();
+
+                    if (timeLeft <= 0) {
+                        // 当前阶段结束
+                        clearInterval(timer);
+                        handlePhaseEnd();
+                    }
+                }, 1000);
+            }
+
+            // 暂停计时器
+            function pauseTimer() {
+                isRunning = false;
+                clearInterval(timer);
+            }
+
+            // 继续计时器
+            function resumeTimer() {
+                isRunning = true;
+                runTimer();
+            }
+
+            // 停止计时器
+            function stopTimer() {
+                isRunning = false;
+                clearInterval(timer);
+                timer = null;
+                isWorkPhase = true;
+                currentCycle = 1;
+                timeLeft = 0;
+                updateDisplay();
+                displayPanel.classList.remove('finished');
+            }
+
+            // 处理一个阶段结束
+            function handlePhaseEnd() {
+                if (isWorkPhase) {
+                    // 运动结束，进入间歇
+                    isWorkPhase = false;
+                    timeLeft = parseInt(restTimeSelect.value);
+                } else {
+                    // 间歇结束，进入下一轮运动或结束
+                    currentCycle++;
+                    if (currentCycle > parseInt(cyclesSelect.value)) {
+                        // 所有循环结束
+                        timerComplete();
+                        return;
+                    } else {
+                        // 下一轮开始
+                        isWorkPhase = true;
+                        timeLeft = parseInt(workTimeSelect.value) * 60;
+                    }
+                }
+                // 开始新阶段
+                runTimer();
+                updateDisplay();
+            }
+
+            // 计时器全部完成
+            function timerComplete() {
+                isRunning = false;
+                currentPhaseEl.textContent = '训练完成！';
+                timerEl.textContent = '00:00';
+                cycleInfoEl.textContent = `已完成 ${cyclesSelect.value} 个循环`;
+                displayPanel.classList.add('finished');
+
+                // 播放完成提示音（使用滴答声的音频，或者可以找另一个音频）
+                const completeSound = tickSound.cloneNode();
+                completeSound.volume = 0.5;
+                // 快速连续播放三次作为完成提示
+                completeSound.play();
+                setTimeout(() => { completeSound.currentTime = 0; completeSound.play(); }, 300);
+                setTimeout(() => { completeSound.currentTime = 0; completeSound.play(); }, 600);
+
+                startPauseBtn.textContent = '开始';
+                stopBtn.disabled = true;
+            }
+
+            // 更新显示面板
+            function updateDisplay() {
+                // 更新阶段文字和样式
+                if (timeLeft === 0 && !isRunning) {
+                    // 初始状态或停止后
+                    currentPhaseEl.textContent = '准备开始';
+                    displayPanel.className = 'display';
+                } else {
+                    if (isWorkPhase) {
+                        currentPhaseEl.textContent = `运动中 第${currentCycle}/${cyclesSelect.value}轮`;
+                        displayPanel.className = 'display status-work';
+                    } else {
+                        currentPhaseEl.textContent = `间歇中 第${currentCycle}/${cyclesSelect.value}轮`;
+                        displayPanel.className = 'display status-rest';
+                    }
+                }
+
+                // 更新计时器显示
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                // 更新循环信息
+                if (isRunning) {
+                    cycleInfoEl.textContent = isWorkPhase ? '坚持住！' : '休息一下，准备下一轮';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

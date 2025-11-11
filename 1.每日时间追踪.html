@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日时间追踪</title>
+    <style>
+        :root {
+            --mint-green: #f0f7f4;
+            --milktea-brown: #d8c3a5;
+            --text-dark: #5a4a3a;
+            --border-light: #e8e0d5;
+            
+            /* 美拉德/莫兰迪色系 */
+            --color-1: #e8d3cb; /* 灰粉 */
+            --color-2: #d1b3a7; /* 陶土 */
+            --color-3: #b8c4bb; /* 灰绿 */
+            --color-4: #c9b8a8; /* 燕麦 */
+            --color-5: #d7ccc8; /* 浅褐 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--mint-green);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 40px);
+        }
+
+        /* 时间线区域 */
+        .timeline-section {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-light);
+        }
+
+        .timeline-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        #taskInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        #startBtn, #stopBtn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        #startBtn {
+            background-color: var(--milktea-brown);
+            color: white;
+        }
+
+        #startBtn:hover:not(:disabled) {
+            background-color: #c9b395;
+        }
+
+        #startBtn:disabled {
+            background-color: #ece6dd;
+            cursor: not-allowed;
+        }
+
+        #stopBtn {
+            background-color: #e0d5c5;
+            display: none;
+        }
+
+        #stopBtn:hover {
+            background-color: #d4c9b9;
+        }
+
+        .timeline {
+            position: relative;
+            height: 600px;
+            border-left: 2px solid var(--milktea-brown);
+            margin-left: 60px;
+            padding-top: 10px;
+        }
+
+        .time-marker {
+            position: absolute;
+            left: -60px;
+            width: 50px;
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-dark);
+            opacity: 0.7;
+        }
+
+        .time-block {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-radius: 4px;
+            margin-left: 10px;
+            padding: 5px 8px;
+            font-size: 12px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            border-left: 3px solid rgba(0,0,0,0.2);
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .tasks-section, .timer-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-light);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 16px;
+            background-color: var(--milktea-brown);
+            border-radius: 2px;
+        }
+
+        .task-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #newTask {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        #addTask {
+            padding: 8px 15px;
+            background-color: var(--milktea-brown);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-checkbox {
+            width: 16px;
+            height: 16px;
+        }
+
+        .timer-display {
+            font-size: 32px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin: 15px 0;
+            color: var(--text-dark);
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .timer-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .timer-btn.primary {
+            background-color: var(--milktea-brown);
+            color: white;
+        }
+
+        .countdown-setter {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .countdown-setter input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        /* 数据记录区域 */
+        .data-section {
+            grid-column: 1 / span 2;
+            grid-row: 3;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-light);
+        }
+
+        .data-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .data-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .data-field label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .data-field input, .data-field textarea {
+            padding: 8px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .data-field textarea {
+            min-height: 60px;
+        }
+
+        .report-section {
+            margin-top: 20px;
+        }
+
+        #generateReport {
+            background-color: var(--milktea-brown);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        #dailyReport {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #fafafa;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧时间线 -->
+        <section class="timeline-section">
+            <h2>时间线 (7:00 - 23:00)</h2>
+            <div class="timeline-controls">
+                <input type="text" id="taskInput" placeholder="输入当前任务...">
+                <button id="startBtn">开始</button>
+                <button id="stopBtn">结束</button>
+            </div>
+            <div class="timeline" id="timeline">
+                <!-- 时间标记将通过JavaScript动态生成 -->
+            </div>
+        </section>
+
+        <!-- 右侧面板 -->
+        <div class="right-panel">
+            <!-- 今日任务 -->
+            <section class="tasks-section">
+                <div class="section-title">今日任务</div>
+                <div class="task-input">
+                    <input type="text" id="newTask" placeholder="添加新任务...">
+                    <button id="addTask">添加</button>
+                </div>
+                <div id="tasksList">
+                    <!-- 任务列表将通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 计时器 -->
+            <section class="timer-section">
+                <div class="section-title">计时器</div>
+                <div class="timer-display" id="stopwatch">00:00:00</div>
+                <div class="timer-controls">
+                    <button class="timer-btn primary" id="startTimer">开始</button>
+                    <button class="timer-btn" id="pauseTimer">暂停</button>
+                    <button class="timer-btn" id="resetTimer">重置</button>
+                </div>
+                
+                <div class="countdown-setter">
+                    <span>倒计时：</span>
+                    <input type="number" id="minutesInput" placeholder="分" min="0" value="5">
+                    <span>分</span>
+                    <input type="number" id="secondsInput" placeholder="秒" min="0" max="59" value="0">
+                    <span>秒</span>
+                    <button class="timer-btn primary" id="startCountdown">开始</button>
+                </div>
+                <div class="timer-display" id="countdown">05:00</div>
+            </section>
+        </div>
+
+        <!-- 数据记录 -->
+        <section class="data-section">
+            <div class="section-title">每日数据记录</div>
+            <div class="data-form">
+                <div class="data-field">
+                    <label for="sleepTime">睡眠时间</label>
+                    <input type="text" id="sleepTime" placeholder="例如：7小时30分钟">
+                </div>
+                <div class="data-field">
+                    <label for="weight">体重记录 (kg)</label>
+                    <input type="number" id="weight" placeholder="例如：65.5" step="0.1">
+                </div>
+                <div class="data-field">
+                    <label for="meals">三餐记录</label>
+                    <textarea id="meals" placeholder="早餐：&#10;午餐：&#10;晚餐："></textarea>
+                </div>
+                <div class="data-field">
+                    <label for="mood">心情记录</label>
+                    <textarea id="mood" placeholder="今天的心情如何？"></textarea>
+                </div>
+            </div>
+            
+            <div class="report-section">
+                <button id="generateReport">生成今日报告</button>
+                <textarea id="dailyReport" readonly placeholder="生成的报告将显示在这里..."></textarea>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 美拉德色系数组
+            const colorPalette = [
+                'var(--color-1)', 'var(--color-2)', 'var(--color-3)', 
+                'var(--color-4)', 'var(--color-5)'
+            ];
+            let currentColorIndex = 0;
+            
+            // 时间线相关变量
+            let timelineStartTime = null;
+            let currentTimeBlock = null;
+            let timelineActivities = [];
+            
+            // 计时器相关变量
+            let stopwatchInterval = null;
+            let stopwatchTime = 0;
+            let countdownInterval = null;
+            let countdownTime = 0;
+            
+            // 初始化时间线刻度
+            function initTimeline() {
+                const timeline = document.getElementById('timeline');
+                timeline.innerHTML = '';
+                
+                for (let hour = 7; hour <= 23; hour++) {
+                    const marker = document.createElement('div');
+                    marker.className = 'time-marker';
+                    marker.style.top = `${((hour - 7) / 16) * 100}%`;
+                    marker.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                    timeline.appendChild(marker);
+                }
+            }
+            
+            // 时间线控制
+            document.getElementById('startBtn').addEventListener('click', startTiming);
+            document.getElementById('stopBtn').addEventListener('click', stopTiming);
+            
+            function startTiming() {
+                const taskInput = document.getElementById('taskInput');
+                const task = taskInput.value.trim();
+                
+                if (!task) {
+                    alert('请输入任务内容');
+                    return;
+                }
+                
+                timelineStartTime = new Date();
+                currentTimeBlock = {
+                    task: task,
+                    startTime: timelineStartTime,
+                    color: colorPalette[currentColorIndex]
+                };
+                
+                currentColorIndex = (currentColorIndex + 1) % colorPalette.length;
+                
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'block';
+                taskInput.disabled = true;
+            }
+            
+            function stopTiming() {
+                if (!timelineStartTime || !currentTimeBlock) return;
+                
+                const endTime = new Date();
+                currentTimeBlock.endTime = endTime;
+                timelineActivities.push(currentTimeBlock);
+                
+                // 在时间线上显示区块
+                addTimeBlockToTimeline(currentTimeBlock);
+                
+                // 重置状态
+                document.getElementById('startBtn').style.display = 'block';
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('taskInput').disabled = false;
+                document.getElementById('taskInput').value = '';
+                timelineStartTime = null;
+                currentTimeBlock = null;
+            }
+            
+            function addTimeBlockToTimeline(block) {
+                const timeline = document.getElementById('timeline');
+                
+                const startHour = block.startTime.getHours();
+                const startMinute = block.startTime.getMinutes();
+                const endHour = block.endTime.getHours();
+                const endMinute = block.endTime.getMinutes();
+                
+                const startPercent = ((startHour - 7) * 60 + startMinute) / (16 * 60) * 100;
+                const durationPercent = ((endHour - startHour) * 60 + (endMinute - startMinute)) / (16 * 60) * 100;
+                
+                const timeBlock = document.createElement('div');
+                timeBlock.className = 'time-block';
+                timeBlock.style.top = `${startPercent}%`;
+                timeBlock.style.height = `${durationPercent}%`;
+                timeBlock.style.backgroundColor = block.color;
+                timeBlock.textContent = `${formatTime(block.startTime)}-${formatTime(block.endTime)} ${block.task}`;
+                timeBlock.title = `${formatTime(block.startTime)}-${formatTime(block.endTime)} ${block.task}`;
+                
+                timeline.appendChild(timeBlock);
+            }
+            
+            function formatTime(date) {
+                return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+            }
+            
+            // 任务列表功能
+            document.getElementById('addTask').addEventListener('click', addTask);
+            document.getElementById('newTask').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') addTask();
+            });
+            
+            function addTask() {
+                const taskInput = document.getElementById('newTask');
+                const task = taskInput.value.trim();
+                
+                if (!task) return;
+                
+                const tasksList = document.getElementById('tasksList');
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item';
+                taskItem.innerHTML = `
+                    <input type="checkbox" class="task-checkbox">
+                    <span>${task}</span>
+                `;
+                
+                tasksList.appendChild(taskItem);
+                taskInput.value = '';
+            }
+            
+            // 秒表功能
+            document.getElementById('startTimer').addEventListener('click', startStopwatch);
+            document.getElementById('pauseTimer').addEventListener('click', pauseStopwatch);
+            document.getElementById('resetTimer').addEventListener('click', resetStopwatch);
+            
+            function startStopwatch() {
+                if (stopwatchInterval) return;
+                
+                stopwatchInterval = setInterval(() => {
+                    stopwatchTime++;
+                    updateStopwatchDisplay();
+                }, 1000);
+            }
+            
+            function pauseStopwatch() {
+                clearInterval(stopwatchInterval);
+                stopwatchInterval = null;
+            }
+            
+            function resetStopwatch() {
+                pauseStopwatch();
+                stopwatchTime = 0;
+                updateStopwatchDisplay();
+            }
+            
+            function updateStopwatchDisplay() {
+                const hours = Math.floor(stopwatchTime / 3600);
+                const minutes = Math.floor((stopwatchTime % 3600) / 60);
+                const seconds = stopwatchTime % 60;
+                
+                document.getElementById('stopwatch').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // 倒计时功能
+            document.getElementById('startCountdown').addEventListener('click', startCountdown);
+            
+            function startCountdown() {
+                if (countdownInterval) clearInterval(countdownInterval);
+                
+                const minutes = parseInt(document.getElementById('minutesInput').value) || 0;
+                const seconds = parseInt(document.getElementById('secondsInput').value) || 0;
+                
+                countdownTime = minutes * 60 + seconds;
+                
+                if (countdownTime <= 0) return;
+                
+                updateCountdownDisplay();
+                
+                countdownInterval = setInterval(() => {
+                    countdownTime--;
+                    updateCountdownDisplay();
+                    
+                    if (countdownTime <= 0) {
+                        clearInterval(countdownInterval);
+                        alert('倒计时结束！');
+                    }
+                }, 1000);
+            }
+            
+            function updateCountdownDisplay() {
+                const minutes = Math.floor(countdownTime / 60);
+                const seconds = countdownTime % 60;
+                
+                document.getElementById('countdown').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // 生成报告
+            document.getElementById('generateReport').addEventListener('click', generateReport);
+            
+            function generateReport() {
+                const today = new Date();
+                const dateStr = today.toLocaleDateString('zh-CN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                
+                let report = `${dateStr}\n\n`;
+                
+                // 时间线活动
+                if (timelineActivities.length > 0) {
+                    report += "📊 今日时间记录：\n";
+                    timelineActivities.forEach(activity => {
+                        report += `   ${formatTime(activity.startTime)}-${formatTime(activity.endTime)} ${activity.task}\n`;
+                    });
+                    report += "\n";
+                }
+                
+                // 每日数据
+                const sleepTime = document.getElementById('sleepTime').value;
+                const weight = document.getElementById('weight').value;
+                const meals = document.getElementById('meals').value;
+                const mood = document.getElementById('mood').value;
+                
+                if (sleepTime) report += `💤 睡眠时间：${sleepTime}\n`;
+                if (weight) report += `⚖️ 体重记录：${weight}kg\n`;
+                if (meals) report += `🍽️ 三餐记录：\n${meals}\n`;
+                if (mood) report += `😊 心情记录：${mood}\n`;
+                
+                document.getElementById('dailyReport').value = report;
+            }
+            
+            // 初始化
+            initTimeline();
+        });
+    </script>
+</body>
+</html>
